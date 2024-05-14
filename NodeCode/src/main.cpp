@@ -102,8 +102,8 @@ void loop()
   drawLineStraight(5, true, BLUE);
   delay(2000);
   pixels.clear();
-  drawLineStraight(1, false, RED);
-  drawLineStraight(5, false, RED);
+  drawLineStraight(1, false, GREEN);
+  drawLineStraight(5, false, GREEN);
   delay(2000);
 
   // drawCircle(7, 8);
