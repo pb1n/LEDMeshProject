@@ -1,5 +1,5 @@
-#include <Adafruit_NeoPixel.h>
-#include <random>
+#include <FastLED.h>
+#include <vector>
 #include <lodepng.h>
 #include "FS.h"
 #include "SPIFFS.h"
@@ -10,63 +10,63 @@
 
 #define GRID_MODE 1
 #ifdef GRID_MODE
-#define GRID_HEIGHT 7
-#define GRID_WIDTH 8
+#define GRID_HEIGHT 10
+#define GRID_WIDTH 10
 #endif
 
-#define COLOUR_RED 0xFF0000
-#define COLOUR_GREEN 0x00FF00
-#define COLOUR_BLUE 0x0000FF
-#define COLOUR_WHITE 0xFFFFFF
+#define COLOUR_RED CRGB::Red
+#define COLOUR_GREEN CRGB::Green
+#define COLOUR_BLUE CRGB::Blue
+#define COLOUR_WHITE CRGB::White
 
-Adafruit_NeoPixel pixels(NUMPIXELS, PIN, NEO_GRB + NEO_KHZ800);
+CRGB leds[NUMPIXELS];
 #define DELAYVAL 500
 
-void setPixel(int pixel, int colour)
+void setPixel(int pixel, CRGB colour)
 // Sets a pixel to a given colour.
 {
-  pixels.setPixelColor(pixel, colour);
+  leds[pixel] = colour;
 }
 
 void updatePixels()
 // Updates pixels. Use this to show the next 'frame' in an animation.
 {
-  pixels.show();
+  FastLED.show();
 }
 
-int gridToSeries(int x, int y)
+int gridToSerpentine(int x, int y)
 {
-  int seriesAddress;
+  int serpentineAddress;
   if (y % 2 == 0)
   {
-    seriesAddress = x + y * GRID_WIDTH;
+    serpentineAddress = x + y * GRID_WIDTH;
   }
   else
   {
-    seriesAddress = (y + 1) * GRID_WIDTH - (x + 1);
+    serpentineAddress = (y + 1) * GRID_WIDTH - (x + 1);
   }
-  return seriesAddress;
+  return serpentineAddress;
 }
 
-void drawLineStraight(int xy, bool vertical = true, int colour = 0xFFFFFF)
+void drawLineStraight(int xy, bool vertical = true, CRGB colour = CRGB::White)
 {
   if (vertical)
   {
     for (int i = 0; i < GRID_HEIGHT; i++)
     {
-      setPixel(gridToSeries(xy, i), colour);
+      setPixel(gridToSerpentine(xy, i), colour);
     }
   }
   else
   {
     for (int i = 0; i < GRID_WIDTH; i++)
     {
-      setPixel(gridToSeries(i, xy), colour);
+      setPixel(gridToSerpentine(i, xy), colour);
     }
   }
 }
 
-void drawImage(char *filepath)
+void drawImage(const char *filepath)
 // Displays an image on the grid.
 {
   std::vector<unsigned char> image; // Raw pixel data
@@ -110,8 +110,8 @@ void drawImage(char *filepath)
   {
     for (int x = 0; x < width; x++)
     {
-      int ledIndex = gridToSeries(x, y);    // Map 2D (x, y) to 1D index
-      int pixelIndex = 4 * (y * width + x); // Each pixel has 4 components (RGBA)
+      int ledIndex = gridToSerpentine(x, y); // Map 2D (x, y) to 1D index
+      int pixelIndex = 4 * (y * width + x);  // Each pixel has 4 components (RGBA)
       uint8_t r = image[pixelIndex];
       uint8_t g = image[pixelIndex + 1];
       uint8_t b = image[pixelIndex + 2];
@@ -122,37 +122,17 @@ void drawImage(char *filepath)
       g = (g * a) / 255;
       b = (b * a) / 255;
 
-      setPixel(ledIndex, pixels.Color(r, g, b));
+      setPixel(ledIndex, CRGB(r, g, b));
     }
   }
   updatePixels();
 }
 
-// void drawLine(int x1, int y1, int x2, int y2){
-
-// }
-
-// void drawCircle(int height, int width, int offset = 0, int colour = 0xFFFFFF)
-// {
-//   for (int i = 0; i < width; i++)
-//   {
-//     Serial.println(i);
-//     setPixel(i, colour);
-//     delay(DELAYVAL);
-//   }
-//   for (int j = 0; j < height; j++)
-//   {
-//     Serial.println(j);
-//     setPixel(width * j, colour);
-//     delay(DELAYVAL);
-//   }
-// }
-
 void setup()
 {
   Serial.begin(115200);
-  pixels.setBrightness(4);
-  pixels.begin();
+  FastLED.addLeds<NEOPIXEL, PIN>(leds, NUMPIXELS);
+  FastLED.setBrightness(255 / DIMMING_FACTOR);
 
   if (!SPIFFS.begin(true))
   {
@@ -163,33 +143,22 @@ void setup()
 
 void loop()
 {
-  // bool redFirst;
-  // for (int i = 0; i < 4; i++)
-  // {
-  //   drawLineStraight(2 * i, true, COLOUR_WHITE);
-  //   drawLineStraight(2 * i + 1, true, COLOUR_BLUE);
-  // }
+  // drawImage("/colourBars.png");
   // updatePixels();
-  // delay(DELAYVAL);
-
-  // for (int i = 0; i < 4; i++)
-  // {
-  //   drawLineStraight(2 * i, true, COLOUR_BLUE);
-  //   drawLineStraight(2 * i + 1, true, COLOUR_WHITE);
-  // }
+  // delay(500);
+  // drawImage("/kirby.png");
   // updatePixels();
-  // delay(DELAYVAL);
-  // drawImage("images/test2.png");
-  drawImage("/colourBars.png");
+  // delay(2500);
+  // drawImage("/colourBars.png");
+  // updatePixels();
+  // delay(500);
+  // drawImage("/test2.png");
+  // updatePixels();
+  // delay(2500);
+  drawImage("/colourBars10x10.png");
   updatePixels();
   delay(500);
-  drawImage("/kirby.png");
-  updatePixels();
-  delay(25000);
-  drawImage("/colourBars.png");
-  updatePixels();
-  delay(500);
-  drawImage("/test2.png");
+  drawImage("/creeper10x10.png");
   updatePixels();
   delay(2500);
 }
