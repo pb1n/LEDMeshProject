@@ -26,7 +26,7 @@ Scheduler userScheduler; // to control your personal task
 painlessMesh  mesh;
 
 // User stub
-//void sendMessage(); // Prototype so PlatformIO doesn't complain
+void sendMessage(); // Prototype so PlatformIO doesn't complain
 //String getReadings(); // Prototype for sending sensor readings
 
 //Create tasks: to send messages and get readings;
@@ -43,10 +43,10 @@ painlessMesh  mesh;
 //  return result;
 //}
 
-//void sendMessage() {
-//  String msg = getReadings();
-//  mesh.sendBroadcast(msg);
-//}
+void sendMessage() {
+  //String msg = getReadings();
+  mesh.sendBroadcast("t");
+}
 
 // Needed for painless library
 void receivedCallback(uint32_t from, String &msg) {
@@ -123,8 +123,15 @@ void loop() {
    if (Serial1.available()) {
     String receivedMessage = Serial1.readStringUntil('\n');
     Serial.println("Received from Serial1: " + receivedMessage); // Print the received message for debugging
+    receivedMessage.trim();
+    if (receivedMessage == "t") {
+      //sendMessage();
+      mesh.sendBroadcast("t"); //- should be removed
+      Serial.println("command broadcasted"); // Print the received message for debugging
+    }    
     // You can also process the receivedMessage further if needed
   }
   // it will run the user scheduler as well
   mesh.update();
 }
+
