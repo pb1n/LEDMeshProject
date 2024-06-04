@@ -30,7 +30,7 @@ def before_upload(source, target, env):
         '-c', data_dir,
         '-b', '4096',
         '-p', '256',
-        '-s', '0xF0000',
+        '-s', '0x4F0000',
         spiffs_image
     ]
 

@@ -5,11 +5,11 @@
 #include "esp_vfs_fat.h"
 #include "esp_spiffs.h"
 #include <esp_partition.h>
+#include <dirent.h>
 
 #define PIN 2
 #define NUMPIXELS 256
 #define DIMMING_FACTOR 16
-#define GIF_FPS 20
 
 #define GRID_MODE
 #ifdef GRID_MODE
@@ -21,8 +21,25 @@ using namespace esp_idf;
 
 ws2812 pixels(PIN, NUMPIXELS);
 
+const std::vector<std::string> imageDirectories = {
+    // "/spiffs/images/freddy",
+    "/spiffs/images/bird",
+    "/spiffs/images/coin",
+    "/spiffs/images/sword",
+    // "/spiffs/images/zombie",
+    // "/spiffs/images/tank",
+    "/spiffs/images/torch"};
+
+const std::vector<size_t> imageCounts = {/*15,*/ 8, 7, 15, /*45, 18,*/ 5};
+const std::vector<int> fpsValues = {/*20,*/ 10, 8, 20, /*21, 20,*/ 10}; // Adjust FPS values as needed
+
+size_t currentDirectoryIndex = 0;
+size_t currentImageIndex = 0;
+std::vector<std::string> images;
+const size_t maxIterations = 10;
+size_t iterationCounter = 0;
+
 int correctedColour(int colour)
-// Dims a Hex colour code by a given factor
 {
     return ((colour >> 16) / DIMMING_FACTOR << 16) |
            ((colour >> 8 & 0xFF) / DIMMING_FACTOR << 8) |
@@ -30,13 +47,11 @@ int correctedColour(int colour)
 }
 
 void setPixel(int pixel, uint32_t colour)
-// Sets a pixel to a given colour.
 {
     pixels.color(pixel, correctedColour(colour));
 }
 
 void updatePixels()
-// Updates pixels. Use this to show the next 'frame' in an animation.
 {
     pixels.update();
 }
@@ -56,32 +71,11 @@ int gridToSerpentine(int x, int y)
     return serpentineAddress;
 }
 
-void drawLineStraight(int xy, bool vertical = true, uint32_t colour = 0xFFFFFF)
-// Basic function to draw a straight line across the matrix of LEDs
-{
-    if (vertical)
-    {
-        for (int i = 0; i < GRID_HEIGHT; i++)
-        {
-            setPixel(gridToSerpentine(xy, i), colour);
-        }
-    }
-    else
-    {
-        for (int i = 0; i < GRID_WIDTH; i++)
-        {
-            setPixel(gridToSerpentine(i, xy), colour);
-        }
-    }
-}
-
 void drawImage(const char *filepath)
-// Displays an image on the grid.
 {
     std::vector<unsigned char> image; // Raw pixel data
     unsigned width, height;
 
-    // Open file from SPIFFS
     FILE *file = fopen(filepath, "r");
     if (!file)
     {
@@ -89,7 +83,6 @@ void drawImage(const char *filepath)
         return;
     }
 
-    // Read file contents into buffer
     std::vector<unsigned char> png_data;
     while (true)
     {
@@ -100,7 +93,6 @@ void drawImage(const char *filepath)
     }
     fclose(file);
 
-    // Decode PNG
     unsigned error = lodepng::decode(image, width, height, png_data);
 
     if (error)
@@ -109,26 +101,23 @@ void drawImage(const char *filepath)
         return;
     }
 
-    // Ensuring the image dimensions match the LED grid
     if (width != GRID_WIDTH || height != GRID_HEIGHT)
     {
         ESP_LOGE("drawImage", "Image dimensions do not match the LED grid size.");
         return;
     }
 
-    // Handling different color types
     for (int y = 0; y < height; y++)
     {
         for (int x = 0; x < width; x++)
         {
-            int ledIndex = gridToSerpentine(x, y); // Map 2D (x, y) to 1D index
-            int pixelIndex = 4 * (y * width + x);  // Each pixel has 4 components (RGBA)
+            int ledIndex = gridToSerpentine(x, y);
+            int pixelIndex = 4 * (y * width + x);
             uint8_t r = image[pixelIndex];
             uint8_t g = image[pixelIndex + 1];
             uint8_t b = image[pixelIndex + 2];
             uint8_t a = image[pixelIndex + 3];
 
-            // Apply alpha transparency
             r = (r * a) / 255;
             g = (g * a) / 255;
             b = (b * a) / 255;
@@ -143,6 +132,31 @@ void drawImage(const char *filepath)
 extern "C"
 {
     void app_main(void);
+}
+
+void scanImages(const std::string &directory, std::vector<std::string> &images)
+{
+    images.clear();
+    DIR *dir = opendir(directory.c_str());
+    if (dir == nullptr)
+    {
+        ESP_LOGE("scanImages", "Failed to open directory: %s", directory.c_str());
+        return;
+    }
+
+    struct dirent *entry;
+    while ((entry = readdir(dir)) != nullptr)
+    {
+        if (entry->d_type == DT_REG)
+        {
+            std::string fileName = entry->d_name;
+            if (fileName.substr(fileName.find_last_of(".") + 1) == "png")
+            {
+                images.push_back(directory + "/" + fileName);
+            }
+        }
+    }
+    closedir(dir);
 }
 
 void setup()
@@ -160,7 +174,6 @@ void setup()
         .max_files = 5,
         .format_if_mount_failed = true};
 
-    // Initialize SPIFFS
     esp_err_t ret = esp_vfs_spiffs_register(&conf);
 
     if (ret != ESP_OK)
@@ -180,7 +193,6 @@ void setup()
         return;
     }
 
-    // Check SPIFFS
     size_t total = 0, used = 0;
     ret = esp_spiffs_info(NULL, &total, &used);
     if (ret != ESP_OK)
@@ -191,24 +203,40 @@ void setup()
     {
         ESP_LOGI("SPIFFS", "Partition size: total: %d, used: %d", total, used);
     }
+
+    scanImages(imageDirectories[currentDirectoryIndex], images);
 }
 
 void loop()
 {
-    for (int i = 0; i < 15; i++)
+    if (images.empty())
     {
-        std::string filepath = "/spiffs/images/freddy/freddy-" + std::to_string(i) + ".png";
-        ESP_LOGI("loop", "Attempting to open: %s", filepath.c_str());
-        drawImage(filepath.c_str()); // Convert std::string to const char*
-        updatePixels();
-        vTaskDelay(1000 / GIF_FPS / portTICK_PERIOD_MS);
+        ESP_LOGE("loop", "No images found in directory: %s", imageDirectories[currentDirectoryIndex].c_str());
+        return;
     }
+
+    for (size_t i = 0; i < maxIterations; ++i)
+    {
+        for (size_t j = 0; j < images.size(); ++j)
+        {
+            const std::string &filepath = images[j];
+            ESP_LOGI("loop", "Attempting to open: %s", filepath.c_str());
+            drawImage(filepath.c_str());
+            updatePixels();
+            vTaskDelay(1000 / fpsValues[currentDirectoryIndex] / portTICK_PERIOD_MS);
+        }
+    }
+
+    // Move to the next directory
+    currentDirectoryIndex = (currentDirectoryIndex + 1) % imageDirectories.size();
+    scanImages(imageDirectories[currentDirectoryIndex], images);
+    currentImageIndex = 0; // Reset image index
+    iterationCounter = 0;  // Reset iteration counter
 }
 
 void app_main()
 {
     setup();
-    // drawImage("/spiffs/kirby16x16.png");
     for (;;)
     {
         loop();
