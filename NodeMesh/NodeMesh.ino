@@ -191,7 +191,9 @@ void setup() {
 void loop() {
   mesh.update();
   userScheduler.execute();
+  if(!isPaused){
   displayTask();
+  }
 }
 
 void buttonTaskCallback() {
@@ -230,47 +232,55 @@ void displayTask() {
 }
 
 void updateSensorImage() {
-  static unsigned long lastUpdateTime = 0;
-  sensors_event_t humidity, temp;
-  sht4.getEvent(&humidity, &temp);
+  static unsigned long lastSensorUpdateTime = 0;
+  static unsigned long lastFrameUpdateTime = 0;
+  unsigned long currentTime = millis();
 
-  if (temp.temperature < coldThreshold) {
-    if (sensorSequenceIndex != 0) {
-      sensorSequenceIndex = 0;  // Cold image sequence index
-      frameIndex = 0;
-      clearPixels();
-      Serial.println("Switched to cold image sequence.");
-    }
-  } else if (temp.temperature > hotThreshold) {
-    if (sensorSequenceIndex != 2) {
-      sensorSequenceIndex = 2;  // Hot image sequence index
-      frameIndex = 0;
-      clearPixels();
-      Serial.println("Switched to hot image sequence.");
-    }
-  } else {
-    if (sensorSequenceIndex != 1) {
-      sensorSequenceIndex = 1;  // Moderate image sequence index
-      frameIndex = 0;
-      clearPixels();
-      Serial.println("Switched to moderate image sequence.");
+  // Check if it's time to read sensor data
+  if (currentTime - lastSensorUpdateTime >= 2000) { // 3000 ms = 3 seconds
+    lastSensorUpdateTime = currentTime;
+    sensors_event_t humidity, temp;
+    sht4.getEvent(&humidity, &temp);
+
+    if (temp.temperature < coldThreshold) {
+      if (sensorSequenceIndex != 0) {
+        sensorSequenceIndex = 0;  // Cold image sequence index
+        frameIndex = 0;
+        clearPixels();
+        Serial.println("Switched to cold image sequence.");
+      }
+    } else if (temp.temperature > hotThreshold) {
+      if (sensorSequenceIndex != 2) {
+        sensorSequenceIndex = 2;  // Hot image sequence index
+        frameIndex = 0;
+        clearPixels();
+        Serial.println("Switched to hot image sequence.");
+      }
+    } else {
+      if (sensorSequenceIndex != 1) {
+        sensorSequenceIndex = 1;  // Moderate image sequence index
+        frameIndex = 0;
+        clearPixels();
+        Serial.println("Switched to moderate image sequence.");
+      }
     }
   }
 
-  unsigned long currentTime = millis();
-  if (currentTime - lastUpdateTime > (1000 / sensorSequences[sensorSequenceIndex].fps)) {
-    lastUpdateTime = currentTime;
+  // Update frames based on fps of the current sequence
+  if (currentTime - lastFrameUpdateTime > (1000 / sensorSequences[sensorSequenceIndex].fps)) {
+    lastFrameUpdateTime = currentTime;
     if (frameIndex < sensorSequences[sensorSequenceIndex].frames.size()) {
       drawImageFromMemory(sensorSequences[sensorSequenceIndex].frames[frameIndex]);
       frameIndex++;
       if (frameIndex >= sensorSequences[sensorSequenceIndex].frames.size()) {
-        frameIndex = 0;
+        frameIndex = 0; // Reset frame index to loop the animation
       }
     } else {
       Serial.println("Error: frameIndex out of bounds in sensor mode");
     }
   }
 }
+
 
 void drawImageFromMemory(const imageFrame& frame) {
   for (unsigned y = 0; y < frame.height; y++) {
