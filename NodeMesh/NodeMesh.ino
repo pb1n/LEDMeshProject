@@ -67,7 +67,7 @@ void switchToSpecificImageSequence(int index);
 void buttonTaskCallback();
 void updateSensorImage();
 
-Task taskSendMessage(TASK_SECOND * 5, TASK_FOREVER, []() {
+Task taskSendMessage(TASK_SECOND * 2, TASK_FOREVER, []() {
   String msg = getReadings();
   mesh.sendBroadcast(msg);  // broadcasts to all nodes
 });
@@ -160,10 +160,14 @@ void setup() {
     "/images/sword",
     "/images/torch",
     "/images/tank",
-    "/images/zombies"
+    "/images/zombies",
+    "/images/armLogo",
+    "/images/dry",
+    "/images/moderateHum",
+    "/images/wet",
     
   };
-  const int fpsValues[] = { 30, 8, 20, 10, 8, 8 };
+  const int fpsValues[] = { 30, 8, 20, 10, 8, 8, 1, 8, 8, 8 };
 
   for (int i = 0; i < sizeof(imageDirectories) / sizeof(imageDirectories[0]); i++) {
     imageSequence sequence;

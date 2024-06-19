@@ -19,6 +19,8 @@
 #define RXD2 10
 #define TXD2 11
 
+#define LED_MESH_CONNECTED 13 // Define the LED pin for mesh connection
+
 Scheduler userScheduler; // to control your personal task
 painlessMesh mesh;
 
@@ -95,6 +97,11 @@ void nodeTimeAdjustedCallback(int32_t offset) {
 void setup() {
   Serial.begin(115200);
   Serial1.begin(115200, SERIAL_8N1, RXD2, TXD2); // For sending and receiving data to another ESP32
+
+  // Initialize LED
+  pinMode(LED_MESH_CONNECTED, OUTPUT);
+  digitalWrite(LED_MESH_CONNECTED, LOW); // Ensure LED is off initially
+
   mesh.setDebugMsgTypes(ERROR | STARTUP);  // set before init() so that you can see startup messages
 
   mesh.init(MESH_PREFIX, MESH_PASSWORD, &userScheduler, MESH_PORT);
@@ -105,6 +112,9 @@ void setup() {
   mesh.setRoot(true); 
 
   Serial1.print("Mesh AP Ready!");
+
+  // Turn on the LED when the mesh network is initialized and the root node is set
+  digitalWrite(LED_MESH_CONNECTED, HIGH);
 }
 
 void loop() {
