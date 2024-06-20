@@ -36,7 +36,7 @@ unsigned long previousMillisReceive = 0;
 unsigned long previousMillisSend = 0;
 unsigned long previousMillisConnected = 0;
 const long interval = 100;  // Duration to flash the LED
-const long intervalConnected = 800;  // Duration to flash the connected LED
+const long intervalConnected = 300;  // Duration to flash the connected LED
 
 bool receiveLedState = LOW;
 bool sendLedState = LOW;

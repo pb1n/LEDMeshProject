@@ -28,10 +28,13 @@ Adafruit_SHT4x sht4 = Adafruit_SHT4x();
 
 bool lastButtonState = HIGH;  // Assume the button is not pressed initially
 bool sensorMode = true;  // Global variable for sensor mode
+bool temperatureMode = true;  // Global variable for temperature mode
 
-// Temperature thresholds
+// Temperature and humidity thresholds
 float coldThreshold = 25.0;
 float hotThreshold = 30.0;
+float dryThreshold = 60.0;
+float wetThreshold = 80.0;
 
 // Image handling structures
 struct imageFrame {
@@ -45,9 +48,11 @@ struct imageSequence {
 };
 
 std::vector<imageSequence> sequences;  // Global variable to store sequences
-std::vector<imageSequence> sensorSequences;  // Sequences for sensor mode
+std::vector<imageSequence> tempSequences;  // Sequences for temperature mode
+std::vector<imageSequence> humiditySequences;  // Sequences for humidity mode
 int sequenceIndex = 0;                 // Global sequence index
-int sensorSequenceIndex = 0;           // Sensor mode sequence index
+int tempSequenceIndex = 0;           // Temperature mode sequence index
+int humiditySequenceIndex = 0;       // Humidity mode sequence index
 int frameIndex = 0;                    // Frame index for the current sequence
 bool isPaused = false;                 // State variable for pause/resume
 
@@ -66,6 +71,8 @@ void switchToNextImageSequence();
 void switchToSpecificImageSequence(int index);
 void buttonTaskCallback();
 void updateSensorImage();
+void updateTempImage();
+void updateHumidityImage();
 
 Task taskSendMessage(TASK_SECOND * 2, TASK_FOREVER, []() {
   String msg = getReadings();
@@ -103,6 +110,14 @@ void receivedCallback(uint32_t from, String& msg) {
   } else if (msg == "s") {
     sensorMode = true;
     Serial.println("Switched to sensor mode");
+    frameIndex = 0;  // Reset frame index
+  } else if (msg == "st") {
+    temperatureMode = true;
+    Serial.println("Switched to temperature mode");
+    frameIndex = 0;  // Reset frame index
+  } else if (msg == "sh") {
+    temperatureMode = false;
+    Serial.println("Switched to humidity mode");
     frameIndex = 0;  // Reset frame index
   } else if (msg.startsWith("a")) {
     int index = msg.substring(1).toInt();
@@ -165,7 +180,6 @@ void setup() {
     "/images/dry",
     "/images/moderateHum",
     "/images/wet",
-    
   };
   const int fpsValues[] = { 30, 8, 20, 10, 8, 8, 1, 8, 8, 8 };
 
@@ -176,27 +190,42 @@ void setup() {
     sequences.push_back(sequence);
   }
 
-  // Load sensor image sequences
-  const char* sensorImageDirectories[] = {
+  // Load temperature image sequences
+  const char* tempImageDirectories[] = {
     "/images/cold",
     "/images/moderate",
     "/images/hot"
   };
-  const int sensorFpsValues[] = { 8, 8, 8 };
+  const int tempFpsValues[] = { 8, 8, 8 };
 
-  for (int i = 0; i < sizeof(sensorImageDirectories) / sizeof(sensorImageDirectories[0]); i++) {
+  for (int i = 0; i < sizeof(tempImageDirectories) / sizeof(tempImageDirectories[0]); i++) {
     imageSequence sequence;
-    sequence.fps = sensorFpsValues[i];  // Assign FPS value from predefined array
-    loadImageFrames(sensorImageDirectories[i], sequence);
-    sensorSequences.push_back(sequence);
+    sequence.fps = tempFpsValues[i];  // Assign FPS value from predefined array
+    loadImageFrames(tempImageDirectories[i], sequence);
+    tempSequences.push_back(sequence);
+  }
+
+  // Load humidity image sequences
+  const char* humidityImageDirectories[] = {
+    "/images/dry",
+    "/images/moderateHum",
+    "/images/wet"
+  };
+  const int humidityFpsValues[] = { 8, 8, 8 };
+
+  for (int i = 0; i < sizeof(humidityImageDirectories) / sizeof(humidityImageDirectories[0]); i++) {
+    imageSequence sequence;
+    sequence.fps = humidityFpsValues[i];  // Assign FPS value from predefined array
+    loadImageFrames(humidityImageDirectories[i], sequence);
+    humiditySequences.push_back(sequence);
   }
 }
 
 void loop() {
   mesh.update();
   userScheduler.execute();
-  if(!isPaused){
-  displayTask();
+  if (!isPaused) {
+    displayTask();
   }
 }
 
@@ -236,6 +265,14 @@ void displayTask() {
 }
 
 void updateSensorImage() {
+  if (temperatureMode) {
+    updateTempImage();
+  } else {
+    updateHumidityImage();
+  }
+}
+
+void updateTempImage() {
   static unsigned long lastSensorUpdateTime = 0;
   static unsigned long lastFrameUpdateTime = 0;
   unsigned long currentTime = millis();
@@ -247,22 +284,22 @@ void updateSensorImage() {
     sht4.getEvent(&humidity, &temp);
 
     if (temp.temperature < coldThreshold) {
-      if (sensorSequenceIndex != 0) {
-        sensorSequenceIndex = 0;  // Cold image sequence index
+      if (tempSequenceIndex != 0) {
+        tempSequenceIndex = 0;  // Cold image sequence index
         frameIndex = 0;
         clearPixels();
         Serial.println("Switched to cold image sequence.");
       }
     } else if (temp.temperature > hotThreshold) {
-      if (sensorSequenceIndex != 2) {
-        sensorSequenceIndex = 2;  // Hot image sequence index
+      if (tempSequenceIndex != 2) {
+        tempSequenceIndex = 2;  // Hot image sequence index
         frameIndex = 0;
         clearPixels();
         Serial.println("Switched to hot image sequence.");
       }
     } else {
-      if (sensorSequenceIndex != 1) {
-        sensorSequenceIndex = 1;  // Moderate image sequence index
+      if (tempSequenceIndex != 1) {
+        tempSequenceIndex = 1;  // Moderate image sequence index
         frameIndex = 0;
         clearPixels();
         Serial.println("Switched to moderate image sequence.");
@@ -271,20 +308,69 @@ void updateSensorImage() {
   }
 
   // Update frames based on fps of the current sequence
-  if (currentTime - lastFrameUpdateTime > (1000 / sensorSequences[sensorSequenceIndex].fps)) {
+  if (currentTime - lastFrameUpdateTime > (1000 / tempSequences[tempSequenceIndex].fps)) {
     lastFrameUpdateTime = currentTime;
-    if (frameIndex < sensorSequences[sensorSequenceIndex].frames.size()) {
-      drawImageFromMemory(sensorSequences[sensorSequenceIndex].frames[frameIndex]);
+    if (frameIndex < tempSequences[tempSequenceIndex].frames.size()) {
+      drawImageFromMemory(tempSequences[tempSequenceIndex].frames[frameIndex]);
       frameIndex++;
-      if (frameIndex >= sensorSequences[sensorSequenceIndex].frames.size()) {
+      if (frameIndex >= tempSequences[tempSequenceIndex].frames.size()) {
         frameIndex = 0; // Reset frame index to loop the animation
       }
     } else {
-      Serial.println("Error: frameIndex out of bounds in sensor mode");
+      Serial.println("Error: frameIndex out of bounds in temperature mode");
     }
   }
 }
 
+void updateHumidityImage() {
+  static unsigned long lastSensorUpdateTime = 0;
+  static unsigned long lastFrameUpdateTime = 0;
+  unsigned long currentTime = millis();
+
+  // Check if it's time to read sensor data
+  if (currentTime - lastSensorUpdateTime >= 2000) { // 3000 ms = 3 seconds
+    lastSensorUpdateTime = currentTime;
+    sensors_event_t humidity, temp;
+    sht4.getEvent(&humidity, &temp);
+
+    if (humidity.relative_humidity < dryThreshold) {
+      if (humiditySequenceIndex != 0) {
+        humiditySequenceIndex = 0;  // Dry image sequence index
+        frameIndex = 0;
+        clearPixels();
+        Serial.println("Switched to dry image sequence.");
+      }
+    } else if (humidity.relative_humidity > wetThreshold) {
+      if (humiditySequenceIndex != 2) {
+        humiditySequenceIndex = 2;  // Wet image sequence index
+        frameIndex = 0;
+        clearPixels();
+        Serial.println("Switched to wet image sequence.");
+      }
+    } else {
+      if (humiditySequenceIndex != 1) {
+        humiditySequenceIndex = 1;  // Moderate image sequence index
+        frameIndex = 0;
+        clearPixels();
+        Serial.println("Switched to moderate humidity image sequence.");
+      }
+    }
+  }
+
+  // Update frames based on fps of the current sequence
+  if (currentTime - lastFrameUpdateTime > (1000 / humiditySequences[humiditySequenceIndex].fps)) {
+    lastFrameUpdateTime = currentTime;
+    if (frameIndex < humiditySequences[humiditySequenceIndex].frames.size()) {
+      drawImageFromMemory(humiditySequences[humiditySequenceIndex].frames[frameIndex]);
+      frameIndex++;
+      if (frameIndex >= humiditySequences[humiditySequenceIndex].frames.size()) {
+        frameIndex = 0; // Reset frame index to loop the animation
+      }
+    } else {
+      Serial.println("Error: frameIndex out of bounds in humidity mode");
+    }
+  }
+}
 
 void drawImageFromMemory(const imageFrame& frame) {
   for (unsigned y = 0; y < frame.height; y++) {
