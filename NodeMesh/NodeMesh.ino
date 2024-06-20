@@ -57,8 +57,8 @@ int frameIndex = 0;                    // Frame index for the current sequence
 bool isPaused = false;                 // State variable for pause/resume
 
 // Mesh network setup
-#define MESH_PREFIX "RNTMESH"
-#define MESH_PASSWORD "MESHpassword"
+#define MESH_PREFIX "ARMMESH" //name for your MESH
+#define MESH_PASSWORD "ARM12345678" //password for your MESH
 #define MESH_PORT 5555
 
 Scheduler userScheduler;  // to control your personal task
