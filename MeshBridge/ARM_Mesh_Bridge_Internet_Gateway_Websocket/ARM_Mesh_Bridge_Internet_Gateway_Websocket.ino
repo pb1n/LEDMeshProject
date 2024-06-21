@@ -1,9 +1,3 @@
-//************************************************************
-// This code is used in conjunction with the mesh AP to form a mesh-internet bridge:
-//1) Receive sensor readings and statuses of all nodes in the network from the mesh AP via UART and
-//send to webpage and database
-//2) Forward requests via UART to mesh AP to communicate to mesh nodes
-//************************************************************
 #include <WiFi.h>
 #include <WebSocketsClient.h>
 #include <ArduinoJson.h>
@@ -13,11 +7,12 @@
 #define TXD2 19
 
 // LED pins
-#define LED_RECEIVE 2  // External LED for receiving messages
-#define LED_SEND 4     // External LED for sending messages
-#define LED_CONNECTED 5  // External LED for WebSocket connection
+#define LED_RECEIVE 4    // External LED for receiving messages
+#define LED_SEND 5       // External LED for sending messages
+#define LED_CONNECTED 2  // External LED for WebSocket connection and debugging mode
+#define LED_WIFI 3       // External LED for Wifi connection
 
-#define debuggingMode
+#define debuggingMode //directive used for debugging purposes
 
 // Replace with your network credentials
 const char* ssid = "mesh123";
@@ -36,11 +31,13 @@ unsigned long previousMillisReceive = 0;
 unsigned long previousMillisSend = 0;
 unsigned long previousMillisConnected = 0;
 const long interval = 100;  // Duration to flash the LED
-const long intervalConnected = 300;  // Duration to flash the connected LED
+const long intervalConnected = 500;  // Duration to flash the connected LED
 
 bool receiveLedState = LOW;
 bool sendLedState = LOW;
 bool connectedLedState = LOW;
+
+bool previousWiFiStatus = false;
 
 #ifndef debuggingMode
 void webSocketEvent(WStype_t type, uint8_t* payload, size_t length) {
@@ -52,6 +49,7 @@ void webSocketEvent(WStype_t type, uint8_t* payload, size_t length) {
     case WStype_CONNECTED:
       Serial.println("WebSocket Connected!");
       digitalWrite(LED_CONNECTED, HIGH);  // Turn on the connected LED
+      digitalWrite(LED_WIFI, HIGH);
       break;
     case WStype_TEXT: {
       Serial.printf("Text message received: %s\n", payload);
@@ -103,18 +101,24 @@ void setup() {
   pinMode(LED_RECEIVE, OUTPUT);
   pinMode(LED_SEND, OUTPUT);
   pinMode(LED_CONNECTED, OUTPUT);
+  pinMode(LED_WIFI, OUTPUT);
 
   digitalWrite(LED_RECEIVE, LOW);
   digitalWrite(LED_SEND, LOW);
   digitalWrite(LED_CONNECTED, LOW);
+  digitalWrite(LED_WIFI, LOW);
 
 #ifndef debuggingMode
   WiFi.begin(ssid, password);
   Serial.println("Connecting to WiFi...");
   while (WiFi.status() != WL_CONNECTED) {
-    delay(1000);
+    digitalWrite(LED_WIFI, HIGH);
+    delay(500);
+    digitalWrite(LED_WIFI, LOW);
+    delay(500);
     Serial.print(".");
   }
+  digitalWrite(LED_WIFI, HIGH);
   Serial.println("\nConnected to WiFi");
 
   const char* serverAddress = "172.20.10.2";
@@ -134,12 +138,13 @@ void loop() {
 #endif
 
 #ifdef debuggingMode
-  // Handle the connected LED flashing every 800ms
+  // Handle the connected LED flashing every 500ms
   unsigned long currentMillis = millis();
   if (currentMillis - previousMillisConnected >= intervalConnected) {
     previousMillisConnected = currentMillis;
     connectedLedState = !connectedLedState;  // Toggle the state of the connected LED
     digitalWrite(LED_CONNECTED, connectedLedState);
+    digitalWrite(LED_WIFI, connectedLedState);
   }
 
   while (Serial.available()) {
@@ -150,6 +155,13 @@ void loop() {
     previousMillisSend = millis();  // Record the time the message was sent
   }
 #endif
+
+  // Check WiFi connection status and update LED
+  bool currentWiFiStatus = (WiFi.status() == WL_CONNECTED);
+  if (currentWiFiStatus != previousWiFiStatus) {
+    digitalWrite(LED_WIFI, currentWiFiStatus ? HIGH : LOW);
+    previousWiFiStatus = currentWiFiStatus;
+  }
 
   // Check if it's time to turn off the receive LED
   if (receiveLedState == HIGH && millis() - previousMillisReceive >= interval) {

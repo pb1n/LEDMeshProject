@@ -19,7 +19,7 @@
 #define RXD2 10
 #define TXD2 11
 
-#define LED_MESH_CONNECTED 13 // Define the LED pin for mesh connection
+#define LED_MESH_CONNECTED 5 // Define the built-in LED pin for mesh connection
 
 Scheduler userScheduler; // to control your personal task
 painlessMesh mesh;
@@ -67,6 +67,7 @@ void nodeTimeAdjustedCallback(int32_t offset) {
 }
 
 void setup() {
+  delay(1000);
   Serial.begin(115200);
   Serial1.begin(115200, SERIAL_8N1, RXD2, TXD2); // For sending and receiving data to another ESP32
 
