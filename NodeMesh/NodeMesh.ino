@@ -7,11 +7,12 @@
 #include <Wire.h>
 #include "painlessMesh.h"
 #include <ArduinoJson.h>
+#include "Base64Utils.h"  // Include the custom Base64 header file
 
 // NeoPixel setup
 #define PIN 2
 #define NUMPIXELS 256
-#define DIMMING_FACTOR 16
+#define DIMMING_FACTOR 10
 #define GRID_HEIGHT 16
 #define GRID_WIDTH 16
 #define BOOT_BUTTON_PIN 9
@@ -73,6 +74,13 @@ void buttonTaskCallback();
 void updateSensorImage();
 void updateTempImage();
 void updateHumidityImage();
+void receivedCallback(uint32_t from, String& msg);
+void reassembleMessage(const String& chunk);
+void processFullMessage(const String& fullMessage);
+void handleSensorMessage(const StaticJsonDocument<256>& doc);
+void clearTempDirectory(const char* path);
+void loadImageFrames(const char* directory, imageSequence& sequence);
+void processImageData(const uint8_t* imageData, size_t length, imageSequence& sequence);
 
 Task taskSendMessage(TASK_SECOND * 2, TASK_FOREVER, []() {
   String msg = getReadings();
@@ -80,6 +88,8 @@ Task taskSendMessage(TASK_SECOND * 2, TASK_FOREVER, []() {
 });
 
 Task buttonTask(TASK_MILLISECOND * 50, TASK_FOREVER, &buttonTaskCallback);  // Debounce task
+
+std::map<String, std::vector<String>> messages;  // To store message parts
 
 String getReadings() {
   StaticJsonDocument<200> jsonReadings;
@@ -95,33 +105,208 @@ String getReadings() {
 
 void receivedCallback(uint32_t from, String& msg) {
   Serial.printf("Received from %u msg=%s\n", from, msg.c_str());
-  if (msg == "t") {
-    switchToNextImageSequence();
-  } else if (msg == "p") {
-    isPaused = true;
-    Serial.println("Animation paused");
-  } else if (msg == "r") {
-    isPaused = false;
-    Serial.println("Animation resumed");
-  } else if (msg == "a") {
-    sensorMode = false;
-    Serial.println("Switched to animation mode");
-    frameIndex = 0;  // Reset frame index
-  } else if (msg == "s") {
-    sensorMode = true;
-    Serial.println("Switched to sensor mode");
-    frameIndex = 0;  // Reset frame index
-  } else if (msg == "st") {
-    temperatureMode = true;
-    Serial.println("Switched to temperature mode");
-    frameIndex = 0;  // Reset frame index
-  } else if (msg == "sh") {
-    temperatureMode = false;
-    Serial.println("Switched to humidity mode");
-    frameIndex = 0;  // Reset frame index
-  } else if (msg.startsWith("a")) {
-    int index = msg.substring(1).toInt();
-    switchToSpecificImageSequence(index - 1);  // Convert 1-based index to 0-based
+
+  // Attempt to parse the message as JSON
+  StaticJsonDocument<256> doc;
+  DeserializationError error = deserializeJson(doc, msg);
+
+  // If JSON parsing fails, assume it's a simple command
+  if (error) {
+    Serial.println("Received simple command");
+    if (msg == "t") {
+      switchToNextImageSequence();
+    } else if (msg == "p") {
+      isPaused = true;
+      Serial.println("Animation paused");
+    } else if (msg == "r") {
+      isPaused = false;
+      Serial.println("Animation resumed");
+    } else if (msg == "a") {
+      sensorMode = false;
+      Serial.println("Switched to animation mode");
+      frameIndex = 0;  // Reset frame index
+    } else if (msg == "s") {
+      sensorMode = true;
+      Serial.println("Switched to sensor mode");
+      frameIndex = 0;  // Reset frame index
+    } else if (msg == "st") {
+      temperatureMode = true;
+      Serial.println("Switched to temperature mode");
+      frameIndex = 0;  // Reset frame index
+    } else if (msg == "sh") {
+      temperatureMode = false;
+      Serial.println("Switched to humidity mode");
+      frameIndex = 0;  // Reset frame index
+    } else if (msg.startsWith("a")) {
+      int index = msg.substring(1).toInt();
+      switchToSpecificImageSequence(index - 1);  // Convert 1-based index to 0-based
+    }
+    return;
+  }
+
+  if (doc.containsKey("id") && doc.containsKey("index") && doc.containsKey("total") && doc.containsKey("chunk")) {
+    reassembleMessage(msg);
+  } else if (doc.containsKey("nodeId") && doc.containsKey("temperature") && doc.containsKey("humidity")) {
+    handleSensorMessage(doc);
+  } else {
+    Serial.println("Unknown message type received");
+  }
+}
+
+void handleSensorMessage(const StaticJsonDocument<256>& doc) {
+  String nodeId = doc["nodeId"];
+  float temperature = doc["temperature"];
+  float humidity = doc["humidity"];
+  
+  Serial.printf("Sensor message from %s: Temperature = %.2f, Humidity = %.2f\n", 
+                nodeId.c_str(), temperature, humidity);
+}
+
+void reassembleMessage(const String& chunk) {
+  StaticJsonDocument<256> chunkDoc;
+  DeserializationError error = deserializeJson(chunkDoc, chunk);
+  if (error) {
+    Serial.print(F("deserializeJson() failed: "));
+    Serial.println(error.c_str());
+    return;
+  }
+
+  String id = chunkDoc["id"];
+  int index = chunkDoc["index"];
+  int total = chunkDoc["total"];
+  String chunkData = chunkDoc["chunk"];
+
+  if (messages.find(id) == messages.end()) {
+    messages[id] = std::vector<String>(total);
+  }
+
+  // Ensure index is within bounds
+  if (index < 0 || index >= total) {
+    Serial.printf("Index out of bounds: %d\n", index);
+    return;
+  }
+
+  messages[id][index] = chunkData;
+
+  // Check if all parts are received
+  bool complete = true;
+  for (int i = 0; i < total; i++) {
+    if (messages[id][i].isEmpty()) {
+      complete = false;
+      break;
+    }
+  }
+
+  if (complete) {
+    String fullMessage;
+    for (const auto& part : messages[id]) {
+      fullMessage += part;
+    }
+    messages.erase(id);  // Clean up the map
+
+    // Process the full message
+    processFullMessage(fullMessage);
+  }
+}
+
+void processFullMessage(const String& fullMessage) {
+  StaticJsonDocument<1024> doc;
+  DeserializationError error = deserializeJson(doc, fullMessage);
+  if (error) {
+    Serial.print(F("deserializeJson() failed: "));
+    Serial.println(error.c_str());
+    return;
+  }
+
+  String name = doc["name"];
+  int fps = doc["fps"];
+  JsonArray images = doc["images"];
+
+  String dir = "/temp/" + name;
+
+  // Ensure the full directory path is created
+  String parentDir = "/temp";
+  if (!LittleFS.exists(parentDir)) {
+    if (!LittleFS.mkdir(parentDir)) {
+      Serial.println("Failed to create parent directory");
+      return;
+    }
+  }
+
+  if (!LittleFS.exists(dir)) {
+    if (!LittleFS.mkdir(dir)) {
+      Serial.println("Failed to create directory");
+      return;
+    }
+  } else {
+    clearTempDirectory(dir.c_str());
+  }
+
+  for (int i = 0; i < images.size(); i++) {
+    String imageData = images[i];
+    std::vector<uint8_t> decodedData = Base64::decode(imageData);
+    const uint8_t* decodedBytes = decodedData.data();
+    int outputLength = decodedData.size();
+
+    String filename = dir + "/frame_" + String(i) + ".png";
+    File file = LittleFS.open(filename, FILE_WRITE);
+    if (file) {
+      file.write(decodedBytes, outputLength);
+      file.close();
+      Serial.print("Stored frame to: ");
+      Serial.println(filename);
+    } else {
+      Serial.println("Failed to open file for writing");
+    }
+  }
+
+  // Save metadata
+  String metadataFilename = dir + "/metadata.json";
+  File metadataFile = LittleFS.open(metadataFilename, FILE_WRITE);
+  if (metadataFile) {
+    StaticJsonDocument<256> metadata;
+    metadata["name"] = name;
+    metadata["fps"] = fps;
+    serializeJson(metadata, metadataFile);
+    metadataFile.close();
+    Serial.print("Stored metadata to: ");
+    Serial.println(metadataFilename);
+  } else {
+    Serial.println("Failed to open metadata file for writing");
+  }
+
+  Serial.println("Image sequence stored successfully");
+
+  // Load and display the new sequence
+  imageSequence newSequence;
+  newSequence.fps = fps;
+  loadImageFrames(dir.c_str(), newSequence);
+  sequences.push_back(newSequence);
+
+  // Switch to the newly added sequence
+  sequenceIndex = sequences.size() - 1;
+  frameIndex = 0;
+  clearPixels();
+  Serial.println("Switched to the new image sequence: " + name);
+}
+
+
+void clearTempDirectory(const char* path) {
+  File root = LittleFS.open(path, "r");
+  if (!root) {
+    Serial.println("Failed to open temp directory");
+    return;
+  }
+
+  File file = root.openNextFile();
+  while (file) {
+    if (file.isDirectory()) {
+      clearTempDirectory(file.name());
+      LittleFS.rmdir(file.name());
+    } else {
+      LittleFS.remove(file.name());
+    }
+    file = root.openNextFile();
   }
 }
 
@@ -132,6 +317,9 @@ void setup() {
     Serial.println("An Error has occurred while mounting LittleFS");
     return;
   }
+
+  // Clear temp directory
+  clearTempDirectory("/temp");
 
   // Initialize I2C communication with custom pins
   myWire.begin(SDA_PIN, SCL_PIN);  // SDA, SCL
