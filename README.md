@@ -1,4 +1,4 @@
-# LUMNET (ARM Wireless Mesh LEDs Project)
+# LUMNET - Device Code (ARM Wireless Mesh LEDs Project)
 ### Third-year Group Project
 #### Contributors (ESP32 Code):
 - Janvid Wu
