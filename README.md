@@ -16,5 +16,7 @@ To connect the two ESP32s, a UART connection is utilised. The pins must be wired
 |---|---|
 | 18 | 11 |
 | 19 | 10 |
+| 5V | 5V |
+| GND | GND |
 
 
