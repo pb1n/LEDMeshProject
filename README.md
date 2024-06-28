@@ -1,11 +1,13 @@
 # LUMNET - Device Code (ARM Wireless Mesh LEDs Project)
 ### Third-year Group Project
+This project deploys a mesh network (PainlessMesh) to connect nodes of Addressable LEDs to display animations across them in sync. A separate repository can be found [here](https://github.com/Shakofalltrades/ARM_LED_APP) for the server and website used to control the nodes.
+
 #### Contributors (ESP32 Code):
 - Janvid Wu
 - Robin Masih
 
 ## Set Up
-To set up the border-router and mesh node(s), at least **three** ESPs are required. **Two** for the border-router, and **one** per LED node. Currently, each node uses a 16 by 16 matrix of **WS2812B Addressable LEDs** (in serpentine configuration), although the grid size can be altered on the [NodeMesh.ino](NodeMesh/NodeMesh.ino) by changing the following directives: `GRID_HEIGHT` and `GRID_WIDTH`. An **SHT41** sensor is also required for the sensor mode operation.
+To set up the border-router and mesh node(s), at least **three** ESPs are required. **Two** for the border-router, and **one** per LED node. Currently, each node uses a 16 by 16 matrix of **WS2812B Addressable LEDs** (in serpentine configuration), although the grid size can be altered on the [LEDNode.ino](LEDNode/LEDNode.ino) by changing the following directives: `GRID_HEIGHT` and `GRID_WIDTH`. An **SHT41** sensor is also required for the sensor mode operation.
 #### Optional - LEDs for the Border-router
 To add status indication LEDs to the Border-router, 5 LEDs are required. Although optional, this is highly recommended.
 
@@ -22,7 +24,7 @@ You may wonder why two ESP32s are "*required*" for the border-router. This is do
 
 #### Wiring the UART Connection Between the ESP32s
 To connect the two ESP32s, a UART connection is utilised. The pins must be wired as follows:
-| Gateway | Access Point |
+| Gateway (PIN) | Access Point (PIN) |
 |---|---|
 | 18 | 11 |
 | 19 | 10 |
@@ -30,7 +32,7 @@ To connect the two ESP32s, a UART connection is utilised. The pins must be wired
 | GND | GND |
 
 #### Optional - Wiring the LEDs for the Border-router
-| Use | Gateway | Access Point |
+| Use | Gateway (PIN) | Access Point (PIN) |
 | -- |---|---|
 | Rx | 4 | - |
 | Tx | 5 | - |
@@ -41,27 +43,28 @@ To connect the two ESP32s, a UART connection is utilised. The pins must be wired
 The Rx and Tx status lights blink when data is received and transmitted, respectively. The Wi-Fi indicator will flash until a network is joined successfully, remaining illuminated. The WebSocket status light will illuminate when the connection is established. The mesh network indicator will illuminate upon successful connection/network establishment.
 
 #### Flashing the ESP32s
-Once wired, the set up is mostly complete. The only outstanding task before flashing is to modify the network addresses and local network credentials in [PATH TO GATEWAY](NodeMesh/NodeMesh.ino).
+Once wired, the set up is mostly complete. The only outstanding task before flashing is to modify the network addresses and local network credentials in [Gateway.ino](BorderRouter/Gateway/Gateway.ino).
 
 Now the ESP32s can be flashed. Ensure that the correct code (Gateway or Access Point) is flashed to corresponding ESP32.
 
 #### Debugging Mode
-A directive, aptly named  `DEBUGGING_MODE`, will skip the Wi-Fi and WebSocket set up. The boot button can then be used to toggle animations.
+A directive, aptly named  `DEBUGGING_MODE`, will skip the Wi-Fi and WebSocket set up. The serial monitor can then be used to send commands to the nodes.
 
 ### Node Devices
 #### Wiring the LEDs and Sensors
 The table below indicates how the LEDs should be wired to the ESP32.
-| ESP32 | LED Matrix |
+| ESP32 (PIN) | LED Matrix |
 |---|---|
 | 5V | 5V |
 | 2 | DIN |
 | GND | GND |
 
 The table below indicates how the SHT41 sensor should be wired to the ESP32.
-| ESP32 | LED Matrix |
+| ESP32 (PIN) | SHT41 |
 |---|---|
-| 5V | 5V |
-| 2 | DIN |
+| 3V3 | VIN |
+| 21 | SDA |
+| 22 | SCL |
 | GND | GND |
 
 #### Flashing the File System
