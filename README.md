@@ -53,17 +53,18 @@ A directive, aptly named  `DEBUGGING_MODE`, will skip the Wi-Fi and WebSocket se
 ### Node Devices
 #### Wiring the LEDs and Sensors
 The table below indicates how the LEDs should be wired to the ESP32.
-| ESP32 | LED Matrix |
+| ESP32 (PIN) | LED Matrix |
 |---|---|
 | 5V | 5V |
 | 2 | DIN |
 | GND | GND |
 
 The table below indicates how the SHT41 sensor should be wired to the ESP32.
-| ESP32 | LED Matrix |
+| ESP32 (PIN) | SHT41 |
 |---|---|
-| 5V | 5V |
-| 2 | DIN |
+| 3V3 | VIN |
+| 21 | SDA |
+| 22 | SCL |
 | GND | GND |
 
 #### Flashing the File System
