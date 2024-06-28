@@ -70,5 +70,5 @@ The table below indicates how the SHT41 sensor should be wired to the ESP32.
 #### Flashing the File System
 Before flashing the code to the ESP, the file system needs to be flashed. The file system used is LittleFS. The upload tool (for Arduino IDE 2.2.1 or higher) can be found [here](https://github.com/earlephilhower/arduino-littlefs-upload).
 
-#### Flashing the ESP32s
+#### Flashing the ESP32
 The code for the node device does not need modification (unless the Access Point's mesh network credentials were changed). It is ready to be flashed.
