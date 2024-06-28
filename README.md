@@ -48,7 +48,7 @@ Once wired, the set up is mostly complete. The only outstanding task before flas
 Now the ESP32s can be flashed. Ensure that the correct code (Gateway or Access Point) is flashed to corresponding ESP32.
 
 #### Debugging Mode
-A directive, aptly named  `DEBUGGING_MODE`, will skip the Wi-Fi and WebSocket set up. The boot button can then be used to toggle animations.
+A directive, aptly named  `DEBUGGING_MODE`, will skip the Wi-Fi and WebSocket set up. The serial monitor can then be used to send commands to the nodes.
 
 ### Node Devices
 #### Wiring the LEDs and Sensors
