@@ -24,7 +24,7 @@ You may wonder why two ESP32s are "*required*" for the border-router. This is do
 
 #### Wiring the UART Connection Between the ESP32s
 To connect the two ESP32s, a UART connection is utilised. The pins must be wired as follows:
-| Gateway | Access Point |
+| Gateway (PIN) | Access Point (PIN) |
 |---|---|
 | 18 | 11 |
 | 19 | 10 |
@@ -32,7 +32,7 @@ To connect the two ESP32s, a UART connection is utilised. The pins must be wired
 | GND | GND |
 
 #### Optional - Wiring the LEDs for the Border-router
-| Use | Gateway | Access Point |
+| Use | Gateway (PIN) | Access Point (PIN) |
 | -- |---|---|
 | Rx | 4 | - |
 | Tx | 5 | - |
