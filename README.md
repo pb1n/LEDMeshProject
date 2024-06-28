@@ -38,7 +38,7 @@ To connect the two ESP32s, a UART connection is utilised. The pins must be wired
 | WebSocket Status | 2 | - |
 | Mesh Network | - | 5 |
 
-The Rx and Tx status lights blink when data is received and transmitted, respectively. The Wi-Fi indicator will flash until a network is joined successfully, remaining illuminated. The WebSocket status light will illuminate when the connection is establish. The mesh network indicator will illuminate upon successful connection/network establishment.
+The Rx and Tx status lights blink when data is received and transmitted, respectively. The Wi-Fi indicator will flash until a network is joined successfully, remaining illuminated. The WebSocket status light will illuminate when the connection is established. The mesh network indicator will illuminate upon successful connection/network establishment.
 
 #### Flashing the ESP32s
 Once wired, the set up is mostly complete. The only outstanding task before flashing is to modify the network addresses and local network credentials in [PATH TO GATEWAY](NodeMesh/NodeMesh.ino).
@@ -68,4 +68,4 @@ The table below indicates how the SHT41 sensor should be wired to the ESP32.
 Before flashing the code to the ESP, the file system needs to be flashed. The file system used is LittleFS. The upload tool (for Arduino IDE 2.2.1 or higher) can be found [here](https://github.com/earlephilhower/arduino-littlefs-upload).
 
 #### Flashing the ESP32s
-The code on the ESP
+The code for the node device does not need modification (unless the Access Point's mesh network credentials were changed). It is ready to be flashed.
