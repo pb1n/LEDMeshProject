@@ -1,6 +1,6 @@
 # LUMNET - Device Code (ARM Wireless Mesh LEDs Project)
 ### Third-year Group Project
-This project deploys a mesh network (PainlessMesh) to connect nodes of Addressable LEDs to display animations across them in sync.
+This project deploys a mesh network (PainlessMesh) to connect nodes of Addressable LEDs to display animations across them in sync. A separate repository can be found [here](https://github.com/Shakofalltrades/ARM_LED_APP) for the server and website used to control the nodes.
 
 #### Contributors (ESP32 Code):
 - Janvid Wu
