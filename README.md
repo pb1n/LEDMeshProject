@@ -7,7 +7,7 @@ This project deploys a mesh network (PainlessMesh) to connect nodes of Addressab
 - Robin Masih
 
 ## Set Up
-To set up the border-router and mesh node(s), at least **three** ESPs are required. **Two** for the border-router, and **one** per LED node. Currently, each node uses a 16 by 16 matrix of **WS2812B Addressable LEDs** (in serpentine configuration), although the grid size can be altered on the [LEDNode.ino](LEDNode/LEDNode.ino) by changing the following directives: `GRID_HEIGHT` and `GRID_WIDTH`. An **SHT41** sensor is also required for the sensor mode operation.
+To set up the border-router and mesh node(s), at least **three** ESP32s are required. **Two** for the border-router, and **one** per LED node. Currently, each node uses a 16 by 16 matrix of **WS2812B Addressable LEDs** (in serpentine configuration), although the grid size can be altered on the [LEDNode.ino](LEDNode/LEDNode.ino) by changing the following directives: `GRID_HEIGHT` and `GRID_WIDTH`. An **SHT41** sensor is also required for the sensor mode operation.
 #### Optional - LEDs for the Border-router
 To add status indication LEDs to the Border-router, 5 LEDs are required. Although optional, this is highly recommended.
 
@@ -70,5 +70,5 @@ The table below indicates how the SHT41 sensor should be wired to the ESP32.
 #### Flashing the File System
 Before flashing the code to the ESP, the file system needs to be flashed. The file system used is LittleFS. The upload tool (for Arduino IDE 2.2.1 or higher) can be found [here](https://github.com/earlephilhower/arduino-littlefs-upload).
 
-#### Flashing the ESP32s
+#### Flashing the ESP32
 The code for the node device does not need modification (unless the Access Point's mesh network credentials were changed). It is ready to be flashed.
