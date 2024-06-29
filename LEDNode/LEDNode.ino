@@ -365,14 +365,8 @@ void setup() {
     "/images/tank",
     "/images/zombies",
     "/images/armLogo",
-    "/images/dry",
-    "/images/moderateHum",
-    "/images/wet",
-    "/images/cold",
-    "/images/moderate",
-    "/images/hot"
   };
-  const int fpsValues[] = { 30, 8, 20, 10, 8, 8, 1, 8, 8, 8, 8, 8, 8};
+  const int fpsValues[] = { 20, 8, 15, 8, 10, 10, 2};
 
   for (int i = 0; i < sizeof(imageDirectories) / sizeof(imageDirectories[0]); i++) {
     imageSequence sequence;
@@ -382,17 +376,17 @@ void setup() {
   }
 
   // Load temperature image sequences
-  const char* tempImageDirectories[] = {
+  const char* temperatureImageDirectories[] = {
     "/images/cold",
     "/images/moderate",
     "/images/hot"
   };
   const int tempFpsValues[] = { 8, 8, 8 };
 
-  for (int i = 0; i < sizeof(tempImageDirectories) / sizeof(tempImageDirectories[0]); i++) {
+  for (int i = 0; i < sizeof(temperatureImageDirectories) / sizeof(temperatureImageDirectories[0]); i++) {
     imageSequence sequence;
     sequence.fps = tempFpsValues[i];  // Assign FPS value from predefined array
-    loadImageFrames(tempImageDirectories[i], sequence);
+    loadImageFrames(temperatureImageDirectories[i], sequence);
     tempSequences.push_back(sequence);
   }
 

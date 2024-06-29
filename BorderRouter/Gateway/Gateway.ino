@@ -19,11 +19,11 @@
 // #define DEBUGGING_MODE // Directive used for debugging purposes
 
 // NETWORK SETTINGS - please change these.
-const char* ssid = "mesh123";                                        // Wi-Fi SSID - please change to your local network SSID
-const char* password = "12345678";                                   // Wi-Fi Password - please change to your local network password (this is not shared with anyone)
-const char* serverAddress = "192.168.30.44";                         // WebSocket Server Address - please change the IP to that of the server
+const char* ssid = "";                                        // Wi-Fi SSID - please change to your local network SSID
+const char* password = "";                                   // Wi-Fi Password - please change to your local network password (this is not shared with anyone)
+const char* serverAddress = "192.168.1.214";                         // WebSocket Server Address - please change the IP to that of the server
 uint16_t serverPort = 8081;                                          // WebSocket Server Port
-const char* jsonUrl = "http://192.168.30.44:5000/latest-animation";  // JSON URL - please change the IP to that of the server
+const char* jsonUrl = "http://192.168.1.214:5001/latest-animation";  // JSON URL - please change the IP to that of the server
 
 #ifndef DEBUGGING_MODE
 WebSocketsClient webSocket;
